@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Canvas Platformer</title>
+
+  <style>
+    body {
+      margin: 0;
+      background: #111;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      font-family: Arial;
+    }
+
+    canvas {
+      border: 4px solid white;
+      background: #87ceeb;
+    }
+  </style>
+</head>
+
+<body>
+
+<canvas id="game" width="900" height="500"></canvas>
+
+<script>
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
+
+// ======================
+// PLAYER
+// ======================
+
+const player = {
+  x: 80,
+  y: 350,
+  width: 35,
+  height: 45,
+  speed: 5,
+  velocityY: 0,
+  jumpPower: 13,
+  grounded: false
+};
+
+const gravity = 0.6;
+
+// ======================
+// CONTROLS
+// ======================
+
+const keys = {};
+
+document.addEventListener("keydown", (e) => {
+  keys[e.key] = true;
+
+  // Jump
+  if (
+    (e.key === "ArrowUp" || e.key === " " || e.key === "w") &&
+    player.grounded
+  ) {
+    player.velocityY = -player.jumpPower;
+    player.grounded = false;
+  }
+});
+
+document.addEventListener("keyup", (e) => {
+  keys[e.key] = false;
+});
+
+// ======================
+// PLATFORMS
+// ======================
+
+const platforms = [
+  { x: 0,   y: 450, width: 900, height: 50 },
+
+  { x: 100, y: 370, width: 150, height: 20 },
+  { x: 330, y: 300, width: 150, height: 20 },
+  { x: 550, y: 370, width: 130, height: 20 },
+  { x: 730, y: 280, width: 120, height: 20 },
+
+  { x: 400, y: 200, width: 130, height: 20 }
+];
+
+// ======================
+// COINS
+// ======================
+
+const coins = [
+  { x: 170, y: 330, collected: false },
+  { x: 400, y: 260, collected: false },
+  { x: 610, y: 330, collected: false },
+  { x: 775, y: 240, collected: false },
+  { x: 450, y: 160, collected: false }
+];
+
+let score = 0;
+
+// ======================
+// GOAL
+// ======================
+
+const goal = {
+  x: 820,
+  y: 210,
+  width: 30,
+  height: 70
+};
+
+// ======================
+// COLLISION
+// ======================
+
+function collision(a, b) {
+  return (
+    a.x < b.x + b.width &&
+    a.x + a.width > b.x &&
+    a.y < b.y + b.height &&
+    a.y + a.height > b.y
+  );
+}
+
+// ======================
+// UPDATE
+// ======================
+
+function update() {
+
+  // Movement
+  if (keys["ArrowLeft"] || keys["a"]) {
+    player.x -= player.speed;
+  }
+
+  if (keys["ArrowRight"] || keys["d"]) {
+    player.x += player.speed;
+  }
+
+  // Gravity
+  player.velocityY += gravity;
+  player.y += player.velocityY;
+
+  player.grounded = false;
+
+  // Platform collision
+  for (const platform of platforms) {
+
+    if (collision(player, platform)) {
+
+      // Landing on top
+      if (
+        player.velocityY >= 0 &&
+        player.y + player.height - player.velocityY <= platform.y
+      ) {
+        player.y = platform.y - player.height;
+        player.velocityY = 0;
+        player.grounded = true;
+      }
+    }
+  }
+
+  // Keep player inside screen
+  if (player.x < 0) {
+    player.x = 0;
+  }
+
+  if (player.x + player.width > canvas.width) {
+    player.x = canvas.width - player.width;
+  }
+
+  // Collect coins
+  for (const coin of coins) {
+
+    const coinBox = {
+      x: coin.x - 10,
+      y: coin.y - 10,
+      width: 20,
+      height: 20
+    };
+
+    if (!coin.collected && collision(player, coinBox)) {
+      coin.collected = true;
+      score++;
+    }
+  }
+
+  // Win condition
+  if (collision(player, goal)) {
+    alert("🎉 You Win! Coins: " + score);
+    resetGame();
+  }
+
+  // Fall off map
+  if (player.y > canvas.height) {
+    resetGame();
+  }
+}
+
+// ======================
+// DRAW
+// ======================
+
+function draw() {
+
+  // Sky
+  ctx.fillStyle = "#87ceeb";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  // Clouds
+  ctx.fillStyle = "white";
+
+  ctx.beginPath();
+  ctx.arc(150, 80, 30, 0, Math.PI * 2);
+  ctx.arc(180, 80, 40, 0, Math.PI * 2);
+  ctx.arc(215, 80, 30, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Platforms
+  for (const platform of platforms) {
+
+    ctx.fillStyle = "#654321";
+    ctx.fillRect(
+      platform.x,
+      platform.y,
+      platform.width,
+      platform.height
+    );
+
+    // Grass
+    ctx.fillStyle = "#22aa22";
+    ctx.fillRect(
+      platform.x,
+      platform.y,
+      platform.width,
+      7
+    );
+  }
+
+  // Coins
+  for (const coin of coins) {
+
+    if (!coin.collected) {
+
+      ctx.fillStyle = "gold";
+
+      ctx.beginPath();
+      ctx.arc(
+        coin.x,
+        coin.y,
+        10,
+        0,
+        Math.PI * 2
+      );
+
+      ctx.fill();
+
+      ctx.strokeStyle = "#d99b00";
+      ctx.stroke();
+    }
+  }
+
+  // Goal flag
+  ctx.fillStyle = "#555";
+  ctx.fillRect(
+    goal.x,
+    goal.y,
+    5,
+    goal.height
+  );
+
+  ctx.fillStyle = "red";
+  ctx.fillRect(
+    goal.x + 5,
+    goal.y,
+    30,
+    20
+  );
+
+  // Player
+  ctx.fillStyle = "#ff3333";
+
+  ctx.fillRect(
+    player.x,
+    player.y,
+    player.width,
+    player.height
+  );
+
+  // Player eyes
+  ctx.fillStyle = "white";
+
+  ctx.fillRect(
+    player.x + 7,
+    player.y + 10,
+    7,
+    7
+  );
+
+  ctx.fillRect(
+    player.x + 21,
+    player.y + 10,
+    7,
+    7
+  );
+
+  // Score
+  ctx.fillStyle = "black";
+  ctx.font = "24px Arial";
+
+  ctx.fillText(
+    "Coins: " + score,
+    20,
+    35
+  );
+
+  // Controls
+  ctx.font = "16px Arial";
+
+  ctx.fillText(
+    "← → / A D = Move   SPACE / ↑ / W = Jump",
+    20,
+    60
+  );
+}
+
+// ======================
+// RESET
+// ======================
+
+function resetGame() {
+
+  player.x = 80;
+  player.y = 350;
+  player.velocityY = 0;
+
+  score = 0;
+
+  for (const coin of coins) {
+    coin.collected = false;
+  }
+}
+
+// ======================
+// GAME LOOP
+// ======================
+
+function gameLoop() {
+
+  update();
+  draw();
+
+  requestAnimationFrame(gameLoop);
+}
+
+gameLoop();
+
+</script>
+
+</body>
+</html>
